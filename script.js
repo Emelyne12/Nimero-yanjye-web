@@ -1,8 +1,4 @@
-/* NimeroYanjye - script.js
-   Simple SPA with slideshow (Unsplash image queries) and localStorage queue.
-*/
 
-// ------- Simple Data Adapter (localStorage) -------
 const STORE_KEY = 'nimero-storage-v1';
 function loadState(){
   const raw = localStorage.getItem(STORE_KEY);
@@ -40,8 +36,6 @@ function updateTicket(queueId, ticketId, patch){
   const s = loadState(); const q = s.queues.find(q=>q.id===queueId); const t = q.tickets.find(x=>x.id===ticketId);
   if(!t) return null; Object.assign(t, patch); saveState(s); return t;
 }
-
-// ------- Simple Router & Rendering -------
 const ROOT = document.getElementById('app');
 const QUEUE_ID = 'q-1';
 
@@ -53,7 +47,6 @@ function route(){
   return renderHome();
 }
 
-// --------- Home (hero + take ticket) ----------
 function renderHome(){
   const slides = [
     'https://source.unsplash.com/1200x800/?african,people,queue',
@@ -94,7 +87,6 @@ function renderHome(){
     </div>
   `;
 
-  // render slides
   const slidesEl = document.getElementById('slides');
   slides.forEach((url,i)=>{
     const div = document.createElement('div');
@@ -102,7 +94,7 @@ function renderHome(){
     div.style.backgroundImage = `url('${url}')`;
     slidesEl.appendChild(div);
   });
-  // slide rotation
+  
   let cur = 0;
   setInterval(()=>{ 
     const nodes = document.querySelectorAll('.slide');
@@ -132,13 +124,12 @@ function refreshWaitingList(){
       </div>
     </div>`).join('');
   el.innerHTML = items || `<div style="color:var(--muted)">Nta bantu bari gutegereza</div>`;
-  // update mini display if called exists
+  
   const called = q.tickets.find(t=>t.status==='CALLED');
   const mini = document.getElementById('mini-display');
   if(mini) mini.textContent = called ? called.id : '---';
 }
 
-// --------- Take / Reserve view (simple) ----------
 function renderTake(){
   const q = getQueue(QUEUE_ID);
   ROOT.innerHTML = `
@@ -160,7 +151,6 @@ function renderTake(){
   document.getElementById('recent-list').innerHTML = recent;
 }
 
-// --------- Agent console ----------
 function renderAgent(){
   const q = getQueue(QUEUE_ID);
   ROOT.innerHTML = `
@@ -180,7 +170,7 @@ function renderAgent(){
     renderAgent();
   });
   document.getElementById('btn-mark-served').addEventListener('click', ()=>{
-    // mark first CALLED as served
+    
     const state = loadState();
     const qobj = state.queues.find(x=>x.id===QUEUE_ID);
     const called = qobj.tickets.find(t=>t.status==='CALLED');
@@ -188,7 +178,6 @@ function renderAgent(){
     else alert('Nta wahamagawe');
   });
 
-  // render list
   const list = q.tickets.map(t=>`
     <div class="ticket">
       <div>
@@ -209,7 +198,6 @@ function renderAgent(){
   }));
 }
 
-// --------- Display (big screen) ----------
 function renderDisplay(){
   const q = getQueue(QUEUE_ID);
   const called = q.tickets.find(t=>t.status==='CALLED');
@@ -219,22 +207,20 @@ function renderDisplay(){
   `;
 }
 
-// --------- Broadcast updates between tabs (BroadcastChannel fallback) -----------
 function broadcastEvent(type, payload){
-  // try BroadcastChannel
+
   try{
     if(window.BroadcastChannel){
       const ch = new BroadcastChannel('nimero-channel');
       ch.postMessage({type,payload});
       ch.close();
     } else {
-      // fallback: localStorage event
+   
       localStorage.setItem('nimero-event', JSON.stringify({type,payload,t:Date.now()}));
     }
   }catch(e){ console.warn(e); }
 }
 
-// listen for broadcast events to re-render
 if(window.BroadcastChannel){
   const ch = new BroadcastChannel('nimero-channel');
   ch.onmessage = (m)=>{ route(); };
@@ -243,6 +229,6 @@ window.addEventListener('storage', (e)=>{
   if(e.key === 'nimero-event') route();
 });
 
-// boot
 window.addEventListener('hashchange', route);
 window.addEventListener('load', route);
+
