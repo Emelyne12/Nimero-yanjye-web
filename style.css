@@ -2,7 +2,7 @@
   --bg-1: #e6f7f8;
   --bg-2: #f2fbfb;
   --card: #ffffff;
-  --accent: #06b6d4; /* turquoise */
+  --accent: #06b6d4; 
   --muted: #64748b;
   --text: #06202a;
   --glass: rgba(6,182,212,0.06);
@@ -12,7 +12,7 @@
   font-synthesis: none;
 }
 
-/* Layout */
+
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;color:var(--text);background:linear-gradient(180deg,var(--bg-1),var(--bg-2))}
 .site-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;max-width:var(--max-width);margin:18px auto;border-radius:14px;background:linear-gradient(90deg,rgba(6,182,212,0.04),transparent)}
@@ -20,10 +20,10 @@ html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe 
 .nav a{margin-left:14px;color:var(--muted);text-decoration:none;font-weight:600}
 .nav a:hover{color:var(--text)}
 
-/* App container */
+
 #app{max-width:var(--max-width);margin:22px auto;padding:8px}
 
-/* Home hero with slideshow */
+
 .hero{
   position:relative;
   height:360px;
@@ -52,20 +52,21 @@ html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,"Segoe 
 .btn.ghost{background:transparent;border:1px solid rgba(6,182,212,0.12);color:white}
 .small{font-size:.95rem;color:rgba(255,255,255,0.9)}
 
-/* Main grid for ticket + sidebar */
+
 .grid{display:grid;grid-template-columns:1fr 360px;gap:18px;margin-top:18px}
 .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:var(--shadow)}
 .ticket{display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(6,182,212,0.05),transparent);margin-bottom:10px}
 .ticket .id{font-weight:900;font-size:1.2rem}
 .ticket .meta{color:var(--muted);font-size:.85rem}
 
-/* Display screen */
+
 .display-screen{display:flex;align-items:center;justify-content:center;height:260px;border-radius:12px;background:linear-gradient(180deg,#071e26,#04232b);color:#fff;font-size:3.2rem;font-weight:900}
 
-/* responsive */
+
 @media (max-width:980px){
   .grid{grid-template-columns:1fr}
   .hero{height:300px}
   .hero .copy{padding-right:10px}
   .nav{display:none}
 }
+
