@@ -1,234 +1,281 @@
 
-const STORE_KEY = 'nimero-storage-v1';
-function loadState(){
+const ROOT = document.getElementById('app');
+const QUEUE_ID = 'q-1';
+
+
+const STORE_KEY = 'nimero-storage-v1';       
+const USERS_KEY = 'nimero-users-v1';         
+const AGENTS_KEY = 'nimero-agents-v1';       
+
+
+function loadState() {
   const raw = localStorage.getItem(STORE_KEY);
-  if(!raw){
+  if (!raw) {
     const seed = {
-      org:{id:'org-1',name:'NimeroYanjye',locale:'rw'},
-      locations:[{id:'loc-1',name:'Head Office'}],
-      services:[{id:'svc-1',name:'Registration',slotMins:10}],
-      queues:[{id:'q-1',locationId:'loc-1',serviceId:'svc-1',mode:'FIFO',tickets:[]}]
+      org: { id: 'org-1', name: 'NimeroYanjye', locale: 'rw' },
+      queues: [{ id: QUEUE_ID, tickets: [] }]
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(seed));
     return seed;
   }
   return JSON.parse(raw);
 }
-function saveState(s){ localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
-function createTicket(queueId, payload){
+
+function saveState(s) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(s));
+}
+
+function createTicket(queueId) {
   const s = loadState();
-  const q = s.queues.find(x=>x.id===queueId);
-  const nextNum = (q.tickets.length+1).toString().padStart(3,'0');
-  const id = String.fromCharCode(65 + (q.tickets.length % 26)) + nextNum;
-  const ticket = {id,status:'WAITING',createdAt:Date.now(),meta:payload||{}};
-  q.tickets.push(ticket);
+  const q = s.queues.find(x => x.id === queueId);
+  const next = q.tickets.length + 1;
+  const id = "A" + next.toString().padStart(3, '0');
+  q.tickets.push({ id, status: 'WAITING', createdAt: Date.now() });
   saveState(s);
-  return ticket;
-}
-function getQueue(queueId){ const s = loadState(); return JSON.parse(JSON.stringify(s.queues.find(q=>q.id===queueId))); }
-function nextTicket(queueId){
-  const s = loadState(); const q = s.queues.find(q=>q.id===queueId);
-  const waiting = q.tickets.find(t=>t.status==='WAITING');
-  if(waiting){ waiting.status='CALLED'; waiting.calledAt=Date.now(); saveState(s); return waiting; } 
-  return null;
-}
-function updateTicket(queueId, ticketId, patch){
-  const s = loadState(); const q = s.queues.find(q=>q.id===queueId); const t = q.tickets.find(x=>x.id===ticketId);
-  if(!t) return null; Object.assign(t, patch); saveState(s); return t;
-}
-const ROOT = document.getElementById('app');
-const QUEUE_ID = 'q-1';
-
-function route(){
-  const hash = location.hash.replace('#','') || '/';
-  if(hash.startsWith('/take')) return renderTake();
-  if(hash.startsWith('/agent')) return renderAgent();
-  if(hash.startsWith('/display')) return renderDisplay();
-  return renderHome();
+  return id;
 }
 
-function renderHome(){
-  const slides = [
-    'https://source.unsplash.com/1200x800/?african,people,queue',
-    'https://source.unsplash.com/1200x800/?african,hospital,waiting',
-    'https://source.unsplash.com/1200x800/?african,queue,bank',
-    'https://source.unsplash.com/1200x800/?african,clinic,waiting'
-  ];
 
-  ROOT.innerHTML = `
-    <section class="hero">
-      <div class="slides" id="slides"></div>
-      <div class="copy">
-        <div class="h1">NimeroYanjye</div>
-        <div class="lead">Teka nimero yawe, ukurikirane umurongo, ushyikire serivisi ku gihe.</div>
-        <div class="controls">
-          <button class="btn" id="take-now">Fata Nimero</button>
-          <a href="#/take" class="btn btn-ghost">Reserve / Details</a>
-        </div>
-        <div style="margin-top:10px;color:rgba(255,255,255,0.9);font-weight:600">Scan the counter display or follow on your phone</div>
-      </div>
-    </section>
-
-    <div class="grid">
-      <div class="card">
-        <h3 style="margin:0 0 8px">How it works</h3>
-        <p style="color:var(--muted)">Click <strong>Fata Nimero</strong> to get a ticket instantly. Agents call next ticket in order.</p>
-        <div style="margin-top:12px">
-          <h4 style="margin:6px 0">Queue</h4>
-          <div id="waiting-list"></div>
-        </div>
-      </div>
-
-      <aside class="card">
-        <h4>Display</h4>
-        <div id="mini-display" class="display-screen">---</div>
-        <div style="margin-top:10px;color:var(--muted)">Open <a href="#/display">Display</a> on a TV for the waiting room.</div>
-      </aside>
-    </div>
-  `;
-
-  const slidesEl = document.getElementById('slides');
-  slides.forEach((url,i)=>{
-    const div = document.createElement('div');
-    div.className = 'slide' + (i===0 ? ' active' : '');
-    div.style.backgroundImage = `url('${url}')`;
-    slidesEl.appendChild(div);
-  });
-  
-  let cur = 0;
-  setInterval(()=>{ 
-    const nodes = document.querySelectorAll('.slide');
-    nodes[cur].classList.remove('active');
-    cur = (cur + 1) % nodes.length;
-    nodes[cur].classList.add('active');
-  }, 5000);
-
-  document.getElementById('take-now').addEventListener('click', ()=>{
-    const t = createTicket(QUEUE_ID, {});
-    renderHome();
-    alert(`Nimero yawe: ${t.id}`);
-  });
-
-  refreshWaitingList();
+function loadUsers() {
+  return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+}
+function saveUsers(users) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+function loadAgents() {
+  return JSON.parse(localStorage.getItem(AGENTS_KEY) || '[]');
+}
+function saveAgents(agents) {
+  localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
 }
 
-function refreshWaitingList(){
-  const q = getQueue(QUEUE_ID);
-  const el = document.getElementById('waiting-list');
-  if(!el) return;
-  const items = q.tickets.filter(t=>t.status!=='SERVED').map(t=>`
-    <div class="ticket">
-      <div>
-         <div class="id">${t.id}</div>
-         <div class="meta">${new Date(t.createdAt).toLocaleTimeString()}</div>
-      </div>
-    </div>`).join('');
-  el.innerHTML = items || `<div style="color:var(--muted)">Nta bantu bari gutegereza</div>`;
-  
-  const called = q.tickets.find(t=>t.status==='CALLED');
-  const mini = document.getElementById('mini-display');
-  if(mini) mini.textContent = called ? called.id : '---';
-}
-
-function renderTake(){
-  const q = getQueue(QUEUE_ID);
-  ROOT.innerHTML = `
-    <div class="card">
-      <h2>Fata Nimero</h2>
-      <p style="color:var(--muted)">Choose mode: FIFO or Reserve (demo uses FIFO).</p>
-      <div style="margin-top:12px">
-        <button class="btn" id="btn-get">Fata Nimero (FIFO)</button>
-      </div>
-      <div style="margin-top:18px"><h4>Recent tickets</h4><div id="recent-list"></div></div>
-    </div>
-  `;
-  document.getElementById('btn-get').addEventListener('click', ()=>{
-    const t = createTicket(QUEUE_ID, {});
-    renderTake();
-    alert(`Nimero yawe: ${t.id}`);
-  });
-  const recent = q.tickets.slice(-6).reverse().map(t=>`<div class="ticket"><div><div class="id">${t.id}</div><div class="meta">${t.status}</div></div></div>`).join('') || `<div style="color:var(--muted)">Nta tickets</div>`;
-  document.getElementById('recent-list').innerHTML = recent;
-}
-
-function renderAgent(){
-  const q = getQueue(QUEUE_ID);
-  ROOT.innerHTML = `
-    <div class="card">
-      <h2>Agent Console</h2>
-      <div style="margin-top:10px">
-        <button class="btn" id="btn-next">Hamagarira Ukurikira (Call Next)</button>
-        <button class="btn btn-ghost" id="btn-mark-served">Mark Served</button>
-      </div>
-      <div style="margin-top:12px"><h4>Queue</h4><div id="agent-list"></div></div>
-    </div>
-  `;
-  document.getElementById('btn-next').addEventListener('click', ()=>{
-    const n = nextTicket(QUEUE_ID);
-    if(n){ broadcastEvent('CALLED_NEXT', n); alert(`Called: ${n.id}`); }
-    else alert('Nta bantu bari gutegereza');
-    renderAgent();
-  });
-  document.getElementById('btn-mark-served').addEventListener('click', ()=>{
-    
-    const state = loadState();
-    const qobj = state.queues.find(x=>x.id===QUEUE_ID);
-    const called = qobj.tickets.find(t=>t.status==='CALLED');
-    if(called){ updateTicket(QUEUE_ID, called.id, {status:'SERVED', servedAt:Date.now()}); broadcastEvent('STATUS_CHANGED', called); renderAgent(); }
-    else alert('Nta wahamagawe');
-  });
-
-  const list = q.tickets.map(t=>`
-    <div class="ticket">
-      <div>
-        <div class="id">${t.id}</div>
-        <div class="meta">${t.status}</div>
-      </div>
-      <div>
-        <button class="btn btn-ghost call-btn" data-id="${t.id}">${t.status==='WAITING'?'Call':'Recall'}</button>
-      </div>
-    </div>
-  `).join('') || `<div style="color:var(--muted)">Queue is empty</div>`;
-  document.getElementById('agent-list').innerHTML = list;
-  document.querySelectorAll('.call-btn').forEach(b => b.addEventListener('click', ev=>{
-    const id = ev.currentTarget.dataset.id;
-    updateTicket(QUEUE_ID, id, {status:'CALLED', calledAt:Date.now()});
-    broadcastEvent('CALLED_NEXT', {id});
-    renderAgent();
-  }));
-}
-
-function renderDisplay(){
-  const q = getQueue(QUEUE_ID);
-  const called = q.tickets.find(t=>t.status==='CALLED');
-  ROOT.innerHTML = `
-    <div class="card display-screen">${called ? called.id : '---'}</div>
-    <div style="margin-top:10px;color:var(--muted)">Now serving</div>
-  `;
-}
-
-function broadcastEvent(type, payload){
-
-  try{
-    if(window.BroadcastChannel){
-      const ch = new BroadcastChannel('nimero-channel');
-      ch.postMessage({type,payload});
-      ch.close();
-    } else {
-   
-      localStorage.setItem('nimero-event', JSON.stringify({type,payload,t:Date.now()}));
-    }
-  }catch(e){ console.warn(e); }
-}
-
-if(window.BroadcastChannel){
-  const ch = new BroadcastChannel('nimero-channel');
-  ch.onmessage = (m)=>{ route(); };
-}
-window.addEventListener('storage', (e)=>{
-  if(e.key === 'nimero-event') route();
-});
 
 window.addEventListener('hashchange', route);
 window.addEventListener('load', route);
 
+function route() {
+  const hash = location.hash.replace('#', '') || '/';
+  if (hash === '/take') renderTake();
+  else if (hash === '/agent') renderAgent();
+  else if (hash === '/display') renderDisplay();
+  else if (hash === '/login') renderLogin();
+  else if (hash === '/signup-user') renderSignupUser();
+  else if (hash === '/signup-agent') renderSignupAgent();
+  else renderHome();
+}
+
+
+function renderHome() {
+  
+  ROOT.innerHTML = `
+    <section class="hero">
+      <div class="slides" id="slides">
+        <div class="slide" style="background-image:url('A.jpg')"></div>
+        <div class="slide" style="background-image:url('B.jpg')"></div>
+        <div class="slide" style="background-image:url('C.jpg')"></div>
+      </div>
+
+      <div class="copy">
+        <div class="h1">NimeroYanjye</div>
+        <div class="lead">Fata nimero yawe, ukurikirane umurongo, ushyikire serivisi ku gihe.</div>
+        <div class="controls">
+          <button class="btn" id="take-now">Fata Nimero</button>
+          <a href="#/login" class="btn ghost">Login</a>
+        </div>
+      </div>
+    </section>
+  `;
+
+  
+  const slides = document.querySelectorAll('.slide');
+  let cur = 0;
+  slides.forEach((s, i) => {
+    if (i === 0) s.classList.add('active');
+  });
+  setInterval(() => {
+    slides[cur].classList.remove('active');
+    cur = (cur + 1) % slides.length;
+    slides[cur].classList.add('active');
+  }, 4000);
+
+  document.getElementById('take-now').addEventListener('click', () => {
+    const id = createTicket(QUEUE_ID);
+    alert(`Nimero yawe: ${id}`);
+  });
+}
+
+function renderTake() {
+  ROOT.innerHTML = `
+    <div class="card">
+      <h2>Fata Nimero</h2>
+      <p>Click the button to get your ticket number.</p>
+      <button class="btn" id="btn-get">Fata Nimero</button>
+    </div>
+  `;
+  document.getElementById('btn-get').addEventListener('click', () => {
+    const id = createTicket(QUEUE_ID);
+    alert(`Nimero yawe: ${id}`);
+  });
+}
+
+function renderAgent() {
+  ROOT.innerHTML = `
+    <div class="card">
+      <h2>Agent Console</h2>
+      <p>Hamagarira abantu bakurikira cyangwa mark as served.</p>
+      <div style="margin-top:12px;">
+        <button id="next-btn" class="btn">Call Next</button>
+        <button id="mark-served" class="btn" style="margin-left:8px">Mark Served</button>
+      </div>
+      <div id="agent-info" style="margin-top:12px;color:var(--muted)"></div>
+    </div>
+  `;
+
+  
+  const infoEl = document.getElementById('agent-info');
+  function refreshInfo() {
+    const s = loadState();
+    const q = s.queues.find(x => x.id === QUEUE_ID);
+    const next = q.tickets.find(t => t.status === 'WAITING');
+    if (next) infoEl.textContent = `Next: ${next.id} (created ${new Date(next.createdAt).toLocaleString()})`;
+    else infoEl.textContent = 'No waiting tickets';
+  }
+  refreshInfo();
+
+  document.getElementById('next-btn').addEventListener('click', () => {
+    const s = loadState();
+    const q = s.queues.find(x => x.id === QUEUE_ID);
+    const next = q.tickets.find(t => t.status === 'WAITING');
+    if (next) {
+      next.status = 'CALLED';
+      saveState(s);
+      alert(`Calling: ${next.id}`);
+    } else {
+      alert('Nta muntu uri mu murongo.');
+    }
+    refreshInfo();
+  });
+
+  document.getElementById('mark-served').addEventListener('click', () => {
+    const s = loadState();
+    const q = s.queues.find(x => x.id === QUEUE_ID);
+    const called = q.tickets.find(t => t.status === 'CALLED');
+    if (called) {
+      called.status = 'SERVED';
+      saveState(s);
+      alert(`${called.id} served.`);
+    } else {
+      alert('Nta nimero yahamagawe ubu.');
+    }
+    refreshInfo();
+  });
+}
+
+function renderDisplay() {
+  
+  const s = loadState();
+  const q = s.queues.find(x => x.id === QUEUE_ID);
+  const called = q.tickets.find(t => t.status === 'CALLED');
+  const show = called ? called.id : '—';
+  ROOT.innerHTML = `
+    <div class="card display-screen">Now Serving: ${show}</div>
+  `;
+}
+
+function renderLogin() {
+  ROOT.innerHTML = `
+    <div class="login-container">
+      <div class="login-box">
+        <h2>User Login</h2>
+        <input type="text" id="user-name" placeholder="Username">
+        <input type="password" id="user-pass" placeholder="Password">
+        <button id="user-login">Login</button>
+        <p style="margin-top:10px;text-align:center">Nta konti? <a href="#/signup-user">Sign Up</a></p>
+      </div>
+
+      <div class="login-box">
+        <h2>Agent Login</h2>
+        <input type="text" id="agent-name" placeholder="Agent ID">
+        <input type="password" id="agent-pass" placeholder="Password">
+        <button id="agent-login">Login</button>
+        <p style="margin-top:10px;text-align:center">Agent mushya? <a href="#/signup-agent">Sign Up</a></p>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('user-login').addEventListener('click', () => {
+    const users = loadUsers();
+    const u = document.getElementById('user-name').value.trim();
+    const p = document.getElementById('user-pass').value.trim();
+    const found = users.find(x => x.username === u && x.password === p);
+    if (found) {
+      alert(`Murakaza neza, ${u}!`);
+      location.hash = '/take';
+    } else {
+      alert('Izina cyangwa ijambo banga si byo.');
+    }
+  });
+
+  document.getElementById('agent-login').addEventListener('click', () => {
+    const agents = loadAgents();
+    const id = document.getElementById('agent-name').value.trim();
+    const p = document.getElementById('agent-pass').value.trim();
+    const found = agents.find(x => x.agentId === id && x.password === p);
+    if (found) {
+      alert(`Murakaza neza Agent ${id}!`);
+      location.hash = '/agent';
+    } else {
+      alert('Agent ID cyangwa password si byo.');
+    }
+  });
+}
+
+function renderSignupUser() {
+  ROOT.innerHTML = `
+    <div class="login-container">
+      <div class="login-box">
+        <h2>Sign Up (User)</h2>
+        <input type="text" id="new-user" placeholder="Username">
+        <input type="password" id="new-pass" placeholder="Password">
+        <button id="signup-btn">Create Account</button>
+        <p style="margin-top:10px;text-align:center">Usanzwe ufite konti? <a href="#/login">Login</a></p>
+      </div>
+    </div>
+  `;
+  document.getElementById('signup-btn').addEventListener('click', () => {
+    const users = loadUsers();
+    const u = document.getElementById('new-user').value.trim();
+    const p = document.getElementById('new-pass').value.trim();
+    if (!u || !p) return alert("Uzuza imyanya yose.");
+    if (users.find(x => x.username === u)) return alert("Izina rimaze gukoreshwa.");
+    users.push({ username: u, password: p });
+    saveUsers(users);
+    alert("Konti yawe yakozwe neza!");
+    location.hash = '/login';
+  });
+}
+
+function renderSignupAgent() {
+  ROOT.innerHTML = `
+    <div class="login-container">
+      <div class="login-box">
+        <h2>Sign Up (Agent)</h2>
+        <input type="text" id="new-agent" placeholder="Agent ID">
+        <input type="password" id="new-agent-pass" placeholder="Password">
+        <button id="signup-agent-btn">Create Agent Account</button>
+        <p style="margin-top:10px;text-align:center">Ufite konti? <a href="#/login">Login</a></p>
+      </div>
+    </div>
+  `;
+  document.getElementById('signup-agent-btn').addEventListener('click', () => {
+    const agents = loadAgents();
+    const id = document.getElementById('new-agent').value.trim();
+    const p = document.getElementById('new-agent-pass').value.trim();
+    if (!id || !p) return alert("Uzuza imyanya yose.");
+    if (agents.find(x => x.agentId === id)) return alert("Agent ID yamaze gukoreshwa.");
+    agents.push({ agentId: id, password: p });
+    saveAgents(agents);
+    alert("Agent account yakozwe neza!");
+    location.hash = '/login';
+  });
+}
